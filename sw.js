@@ -1,4 +1,4 @@
-var CACHE_NAME = "neiva-cache-v1";
+var CACHE_NAME = "neiva-cache-v2";
 var SHELL_FILES = [
   "./index.html",
   "./manifest.webmanifest",
