@@ -99,12 +99,23 @@
     font-size: 12.8px;
     line-height: 1.4;
     display:flex; align-items:center; gap:10px; justify-content:space-between;
-    position: sticky; top: 0; z-index: 29;
   }
   .ios-banner button{
     background: transparent; border: none; color: var(--ink-soft);
     font-size: 15px; min-height: auto; padding: 4px 8px; flex-shrink: 0;
   }
+  .refresh-btn{
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 50%;
+    width: 38px; height: 38px;
+    min-height: auto;
+    padding: 0;
+    flex-shrink: 0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .refresh-btn svg{ width: 18px; height: 18px; }
   .install-btn{
     background: rgba(255,255,255,0.14);
     color: #fff;
@@ -147,6 +158,7 @@
 
   input, select{
     width: 100%;
+    min-width: 0;
     font-family: 'Inter', sans-serif;
     font-size: 16.5px;
     padding: 12px 13px;
@@ -156,6 +168,7 @@
     color: var(--ink);
     min-height: 48px;
   }
+  .row2 > .field, .filter-grid > .field{ min-width: 0; }
   input:focus, select:focus{
     outline: none;
     border-color: var(--navy);
@@ -303,6 +316,9 @@
     <p class="eyebrow" id="tabEyebrow">Caderno digital</p>
     <h1 id="tabTitle">Nova remessa</h1>
   </div>
+  <button class="refresh-btn" id="btnHardRefresh" title="Atualizar app" aria-label="Atualizar app">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+  </button>
   <button class="install-btn" id="btnInstall" hidden>Instalar app</button>
 </header>
 
@@ -441,7 +457,7 @@
 
         <section class="card">
           <div class="btn-row" style="margin-bottom:14px;">
-            <button class="btn-secondary" id="btnAdminRefresh">Atualizar</button>
+            <button class="btn-secondary" id="btnAdminRefresh">Atualizar dados</button>
             <button class="btn-ghost" id="btnAdminLogout">Sair</button>
           </div>
           <div class="admin-totals">
@@ -1005,6 +1021,21 @@
         if(!document.getElementById('view-history').hidden) renderHistory();
         if(!document.getElementById('view-admin').hidden) renderAdmin();
       }
+    });
+
+    document.getElementById('btnHardRefresh').addEventListener('click', async function(){
+      showToast("Atualizando app…");
+      try{
+        if('caches' in window){
+          var keys = await caches.keys();
+          await Promise.all(keys.map(function(k){ return caches.delete(k); }));
+        }
+        if('serviceWorker' in navigator){
+          var regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(function(r){ return r.unregister(); }));
+        }
+      }catch(e){}
+      location.reload(true);
     });
 
     var IOS_BANNER_KEY = "neiva_ios_banner_dismissed";
