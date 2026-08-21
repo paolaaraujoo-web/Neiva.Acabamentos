@@ -339,6 +339,11 @@
         <h2><span class="dot"></span> Nova remessa</h2>
 
         <div class="field">
+          <label>Funcionário (quem está preenchendo)</label>
+          <input type="text" id="i-funcionario" list="funcionariosList" placeholder="Seu nome" />
+        </div>
+
+        <div class="field">
           <label>Cliente</label>
           <input type="text" id="i-cliente" list="clientesList" placeholder="Nome do cliente" />
         </div>
@@ -358,6 +363,7 @@
             <input type="text" id="i-cor" placeholder="Ex: branco" />
           </div>
         </div>
+        <input type="text" id="i-peca-outro" placeholder="Descreva a peça" style="display:none; margin:-6px 0 14px;" />
 
         <div class="field">
           <label>Quantidade de peças</label>
@@ -373,12 +379,6 @@
             <button type="button" class="chip" data-tipo="Outro">Outro</button>
           </div>
           <input type="text" id="i-tipo-outro" placeholder="Descreva o tipo de aplicação" style="display:none; margin-top:8px;" />
-        </div>
-
-        <div class="field">
-          <label>Valor total (R$)</label>
-          <input type="number" id="i-valor" inputmode="decimal" step="0.01" min="0" placeholder="Ex: 60.00" />
-          <div class="hint" id="i-hint">Valor por peça aparece aqui</div>
         </div>
 
         <div class="field">
@@ -408,15 +408,13 @@
             <select id="h-tipo"></select>
           </div>
         </div>
-        <div class="filter-grid">
-          <div class="field">
-            <label>De</label>
-            <input type="date" id="h-ini" />
-          </div>
-          <div class="field">
-            <label>Até</label>
-            <input type="date" id="h-fim" />
-          </div>
+        <div class="field">
+          <label>De</label>
+          <input type="date" id="h-ini" />
+        </div>
+        <div class="field">
+          <label>Até</label>
+          <input type="date" id="h-fim" />
         </div>
         <div class="field">
           <label>Buscar (cor, observação...)</label>
@@ -483,12 +481,14 @@
 
         <section class="card" id="adminEditForm" hidden>
           <h2><span class="dot"></span> Editar remessa</h2>
+          <div class="field"><label>Funcionário</label><input type="text" id="a-funcionario" list="funcionariosList" /></div>
           <div class="field"><label>Cliente</label><input type="text" id="a-cliente" list="clientesList" /></div>
           <div class="field"><label>Data</label><input type="date" id="a-data" /></div>
           <div class="row2">
             <div class="field"><label>Peça</label><select id="a-peca"></select></div>
             <div class="field"><label>Cor</label><input type="text" id="a-cor" /></div>
           </div>
+          <input type="text" id="a-peca-outro" placeholder="Descreva a peça" style="display:none; margin:-6px 0 14px;" />
           <div class="field"><label>Quantidade de peças</label><input type="number" id="a-qtd" inputmode="numeric" min="0" /></div>
           <div class="field">
             <label>Tipo de aplicação</label>
@@ -527,6 +527,7 @@
 </div>
 
 <datalist id="clientesList"></datalist>
+<datalist id="funcionariosList"></datalist>
 
 <nav class="bottomnav">
   <button class="navbtn active" data-tab="insert">
@@ -604,6 +605,16 @@
       return '<option value="'+escapeHtml(c)+'"></option>';
     }).join('');
   }
+  function distinctFuncionarios(){
+    var set = {};
+    entries.forEach(function(e){ if(e.funcionario) set[e.funcionario] = 1; });
+    return Object.keys(set).sort();
+  }
+  function funcionarioDatalist(){
+    document.getElementById('funcionariosList').innerHTML = distinctFuncionarios().map(function(c){
+      return '<option value="'+escapeHtml(c)+'"></option>';
+    }).join('');
+  }
 
   /* ---------- tabs ---------- */
   function switchTab(tab){
@@ -625,50 +636,49 @@
 
   /* ---------- insert form ---------- */
   function resetInsertForm(){
+    document.getElementById('i-funcionario').value = "";
     document.getElementById('i-cliente').value = "";
     document.getElementById('i-data').value = todayISO();
     document.getElementById('i-peca').value = "";
     document.getElementById('i-cor').value = "";
+    document.getElementById('i-peca-outro').value = "";
+    document.getElementById('i-peca-outro').style.display = "none";
     document.getElementById('i-qtd').value = "";
-    document.getElementById('i-valor').value = "";
     document.getElementById('i-obs').value = "";
     document.getElementById('i-tipo-outro').value = "";
     document.getElementById('i-tipo-outro').style.display = "none";
-    document.getElementById('i-hint').textContent = "Valor por peça aparece aqui";
     insertTipo = null;
     document.querySelectorAll('#i-tipo-group .chip').forEach(function(b){ b.classList.remove('active'); });
   }
-  function updateInsertHint(){
-    var qtd = parseFloat(document.getElementById('i-qtd').value) || 0;
-    var valor = parseFloat(document.getElementById('i-valor').value) || 0;
-    document.getElementById('i-hint').textContent = (qtd>0 && valor>0) ? ("≈ " + fmtMoney(valor/qtd) + " por peça") : "Valor por peça aparece aqui";
-  }
   function saveInsertEntry(){
+    var funcionario = document.getElementById('i-funcionario').value.trim();
     var cliente = document.getElementById('i-cliente').value.trim();
     var data = document.getElementById('i-data').value;
     var peca = document.getElementById('i-peca').value;
     var cor = document.getElementById('i-cor').value.trim();
+    var pecaOutro = document.getElementById('i-peca-outro').value.trim();
     var qtd = parseFloat(document.getElementById('i-qtd').value) || 0;
-    var valor = parseFloat(document.getElementById('i-valor').value) || 0;
     var obs = document.getElementById('i-obs').value.trim();
     var tipoOutro = document.getElementById('i-tipo-outro').value.trim();
 
+    if(!funcionario){ showToast("Informe quem está preenchendo"); return; }
     if(!cliente){ showToast("Informe o cliente"); return; }
     if(!data){ showToast("Escolha a data"); return; }
     if(!peca){ showToast("Selecione a peça"); return; }
+    if(peca === "Outro" && !pecaOutro){ showToast("Descreva a peça"); return; }
     if(qtd <= 0){ showToast("Informe a quantidade"); return; }
     if(!insertTipo){ showToast("Selecione o tipo de aplicação"); return; }
     if(insertTipo === "Outro" && !tipoOutro){ showToast("Descreva o tipo de aplicação"); return; }
-    if(valor <= 0){ showToast("Informe o valor total"); return; }
 
     entries.push({
       id: uid(), createdAt: Date.now(),
-      cliente: cliente, data: data, peca: peca, cor: cor, qtd: qtd,
+      funcionario: funcionario, cliente: cliente, data: data, peca: peca, pecaOutro: peca === "Outro" ? pecaOutro : "", cor: cor, qtd: qtd,
       tipo: insertTipo, tipoOutro: insertTipo === "Outro" ? tipoOutro : "",
-      valor: valor, obs: obs
+      valor: 0, obs: obs
     });
     saveEntries();
     clientDatalist();
+    funcionarioDatalist();
     resetInsertForm();
     showToast("Remessa adicionada!");
   }
@@ -696,7 +706,7 @@
       if(ini && e.data < ini) return false;
       if(fim && e.data > fim) return false;
       if(texto){
-        var hay = [e.cliente, e.peca, e.cor, e.tipo, e.tipoOutro, e.obs].join(' ').toLowerCase();
+        var hay = [e.funcionario, e.cliente, e.peca, e.pecaOutro, e.cor, e.tipo, e.tipoOutro, e.obs].join(' ').toLowerCase();
         if(!hay.includes(texto)) return false;
       }
       return true;
@@ -710,13 +720,15 @@
     }
     el.innerHTML = list.map(function(e){
       var tipoLabel = e.tipo === "Outro" ? (e.tipoOutro || "Outro") : e.tipo;
+      var pecaLabel = e.peca === "Outro" ? (e.pecaOutro || "Outro") : e.peca;
       var unit = e.qtd > 0 ? (e.valor / e.qtd) : null;
       return (
         '<div class="entry">' +
           '<div class="info">' +
-            '<p class="piece">' + escapeHtml((e.qtd||'') + ' ' + e.peca + (e.cor ? ' · ' + e.cor : '')) + '</p>' +
+            '<p class="piece">' + escapeHtml((e.qtd||'') + ' ' + pecaLabel + (e.cor ? ' · ' + e.cor : '')) + '</p>' +
             '<p class="meta"><b>' + escapeHtml(e.cliente || '—') + '</b></p>' +
             '<p class="meta">' + escapeHtml(tipoLabel || '—') + ' · ' + fmtDateDisplay(e.data) + (e.obs ? ' · ' + escapeHtml(e.obs) : '') + '</p>' +
+            '<p class="meta">Preenchido por ' + escapeHtml(e.funcionario || '—') + '</p>' +
           '</div>' +
           '<div class="right">' +
             '<div class="value">' + fmtMoney(e.valor) + '</div>' +
@@ -748,7 +760,8 @@
     var sorted = f.slice().sort(function(a,b){ return a.data.localeCompare(b.data); });
     var lines = sorted.map(function(e){
       var tipoLabel = e.tipo === "Outro" ? (e.tipoOutro || "Outro") : e.tipo;
-      return (e.qtd||'') + ' ' + e.peca + (e.cor ? ' ' + e.cor : '') + ' — ' + (e.cliente||'') + ' — ' + tipoLabel + ' — ' + fmtDateDisplay(e.data) + ' — ' + fmtMoney(e.valor);
+      var pecaLabel = e.peca === "Outro" ? (e.pecaOutro || "Outro") : e.peca;
+      return (e.qtd||'') + ' ' + pecaLabel + (e.cor ? ' ' + e.cor : '') + ' — ' + (e.cliente||'') + ' — ' + tipoLabel + ' — ' + fmtDateDisplay(e.data) + ' — ' + fmtMoney(e.valor);
     });
     var total = f.reduce(function(s,e){ return s + (Number(e.valor)||0); }, 0);
     var text = "Resumo — " + lines.length + " remessa(s)\n\n" + lines.join("\n") + "\n\nTOTAL: " + fmtMoney(total);
@@ -769,12 +782,14 @@
     if(list.length === 0){ el.innerHTML = '<div class="card empty">Nenhuma remessa registrada ainda.</div>'; return; }
     el.innerHTML = list.map(function(e){
       var tipoLabel = e.tipo === "Outro" ? (e.tipoOutro || "Outro") : e.tipo;
+      var pecaLabel = e.peca === "Outro" ? (e.pecaOutro || "Outro") : e.peca;
       return (
         '<div class="entry" data-id="' + e.id + '">' +
           '<div class="info">' +
-            '<p class="piece">' + escapeHtml((e.qtd||'') + ' ' + e.peca + (e.cor ? ' · ' + e.cor : '')) + '</p>' +
+            '<p class="piece">' + escapeHtml((e.qtd||'') + ' ' + pecaLabel + (e.cor ? ' · ' + e.cor : '')) + '</p>' +
             '<p class="meta"><b>' + escapeHtml(e.cliente || '—') + '</b> · ' + escapeHtml(tipoLabel || '—') + '</p>' +
             '<p class="meta">' + fmtDateDisplay(e.data) + (e.obs ? ' · ' + escapeHtml(e.obs) : '') + '</p>' +
+            '<p class="meta">Preenchido por ' + escapeHtml(e.funcionario || '—') + '</p>' +
           '</div>' +
           '<div class="right">' +
             '<div class="value">' + fmtMoney(e.valor) + '</div>' +
@@ -816,10 +831,13 @@
     var e = entries.find(function(x){ return x.id === id; });
     if(!e) return;
     editingId = id;
+    document.getElementById('a-funcionario').value = e.funcionario || "";
     document.getElementById('a-cliente').value = e.cliente || "";
     document.getElementById('a-data').value = e.data || "";
     document.getElementById('a-peca').value = e.peca || "";
     document.getElementById('a-cor').value = e.cor || "";
+    document.getElementById('a-peca-outro').value = e.pecaOutro || "";
+    document.getElementById('a-peca-outro').style.display = e.peca === "Outro" ? "block" : "none";
     document.getElementById('a-qtd').value = e.qtd || "";
     document.getElementById('a-valor').value = e.valor || "";
     document.getElementById('a-obs').value = e.obs || "";
@@ -842,10 +860,13 @@
     if(idx === -1) return;
     var tipoBtn = document.querySelector('#a-tipo-group .chip.active');
     var tipo = tipoBtn ? tipoBtn.dataset.tipo : entries[idx].tipo;
+    var peca = document.getElementById('a-peca').value;
     entries[idx] = Object.assign({}, entries[idx], {
+      funcionario: document.getElementById('a-funcionario').value.trim(),
       cliente: document.getElementById('a-cliente').value.trim(),
       data: document.getElementById('a-data').value,
-      peca: document.getElementById('a-peca').value,
+      peca: peca,
+      pecaOutro: peca === "Outro" ? document.getElementById('a-peca-outro').value.trim() : "",
       cor: document.getElementById('a-cor').value.trim(),
       qtd: parseFloat(document.getElementById('a-qtd').value) || 0,
       tipo: tipo,
@@ -857,6 +878,7 @@
     admCancelEdit();
     renderAdmin();
     clientDatalist();
+    funcionarioDatalist();
     showToast("Remessa atualizada");
   }
   function admCancelEdit(){ editingId = null; document.getElementById('adminEditForm').hidden = true; }
@@ -872,13 +894,14 @@
   }
 
   /* ---------- CSV (Excel) ---------- */
-  var CSV_HEADERS = ["ID","Data","Cliente","Peça","Cor","Quantidade","Tipo de aplicação","Valor total (R$)","Valor por peça (R$)","Observação"];
+  var CSV_HEADERS = ["ID","Funcionário","Data","Cliente","Peça","Cor","Quantidade","Tipo de aplicação","Valor total (R$)","Valor por peça (R$)","Observação"];
   function csvEscape(v){ var s = String(v==null?"":v); if(/[;"\n\r]/.test(s)) s = '"' + s.replace(/"/g,'""') + '"'; return s; }
   function entriesToCSV(list){
     var rows = list.map(function(e){
       var tipoLabel = e.tipo === "Outro" ? (e.tipoOutro || "Outro") : e.tipo;
+      var pecaLabel = e.peca === "Outro" ? (e.pecaOutro || "Outro") : e.peca;
       var unit = e.qtd > 0 ? (e.valor / e.qtd) : 0;
-      return [e.id, fmtDateDisplay(e.data), e.cliente||"", e.peca||"", e.cor||"", e.qtd||0, tipoLabel||"", (e.valor||0).toFixed(2).replace('.',','), unit.toFixed(2).replace('.',','), e.obs||""];
+      return [e.id, e.funcionario||"", fmtDateDisplay(e.data), e.cliente||"", pecaLabel||"", e.cor||"", e.qtd||0, tipoLabel||"", (e.valor||0).toFixed(2).replace('.',','), unit.toFixed(2).replace('.',','), e.obs||""];
     });
     var lines = [CSV_HEADERS].concat(rows).map(function(cols){ return cols.map(csvEscape).join(';'); });
     return "﻿" + lines.join("\r\n");
@@ -919,7 +942,7 @@
     var header = parseCSVLine(lines[0], delim).map(function(h){ return h.trim().toLowerCase(); });
     function col(names){ for(var i=0;i<names.length;i++){ var idx = header.indexOf(names[i]); if(idx>-1) return idx; } return -1; }
     var idx = {
-      id: col(['id']), data: col(['data']), cliente: col(['cliente']),
+      id: col(['id']), funcionario: col(['funcionário','funcionario']), data: col(['data']), cliente: col(['cliente']),
       peca: col(['peça','peca']), cor: col(['cor']), qtd: col(['quantidade']),
       tipo: col(['tipo de aplicação','tipo de aplicacao','tipo']),
       valor: col(['valor total (r$)','valor total','valor']),
@@ -932,11 +955,14 @@
       var get = function(k){ return idx[k] > -1 ? (cols[idx[k]]||"").trim() : ""; };
       var tipoRaw = get('tipo');
       var tipo = TIPOS.indexOf(tipoRaw) > -1 ? tipoRaw : (tipoRaw ? "Outro" : "");
+      var pecaRaw = get('peca');
+      var peca = PECAS.indexOf(pecaRaw) > -1 ? pecaRaw : (pecaRaw ? "Outro" : "");
       var entry = {
         id: get('id') || uid(),
         createdAt: Date.now(),
+        funcionario: get('funcionario'),
         data: displayDateToISO(get('data')) || get('data'),
-        cliente: get('cliente'), peca: get('peca'), cor: get('cor'),
+        cliente: get('cliente'), peca: peca, pecaOutro: peca === "Outro" ? pecaRaw : "", cor: get('cor'),
         qtd: parseBRNumber(get('qtd')),
         tipo: tipo, tipoOutro: tipo === "Outro" ? tipoRaw : "",
         valor: parseBRNumber(get('valor')), obs: get('obs')
@@ -947,6 +973,7 @@
     }
     saveEntries();
     clientDatalist();
+    funcionarioDatalist();
     renderAdmin();
     renderHistory();
     showToast(imported + " nova(s), " + updated + " atualizada(s)");
@@ -984,10 +1011,11 @@
     });
 
     document.getElementById('i-peca').innerHTML = '<option value="" disabled selected>Selecione a peça</option>' + PECAS.map(function(p){ return '<option value="'+p+'">'+p+'</option>'; }).join('');
+    document.getElementById('i-peca').addEventListener('change', function(){
+      document.getElementById('i-peca-outro').style.display = this.value === "Outro" ? "block" : "none";
+    });
     wireTypeChips('i-tipo-group', 'i-tipo-outro', function(t){ insertTipo = t; });
     document.getElementById('btnInsertSave').addEventListener('click', saveInsertEntry);
-    document.getElementById('i-qtd').addEventListener('input', updateInsertHint);
-    document.getElementById('i-valor').addEventListener('input', updateInsertHint);
     resetInsertForm();
 
     document.getElementById('h-peca').innerHTML = pecaOptionsHTML(true);
@@ -1006,12 +1034,16 @@
     document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
     document.getElementById('importFile').addEventListener('change', handleImportFile);
     document.getElementById('a-peca').innerHTML = '<option value="" disabled>Selecione a peça</option>' + PECAS.map(function(p){ return '<option value="'+p+'">'+p+'</option>'; }).join('');
+    document.getElementById('a-peca').addEventListener('change', function(){
+      document.getElementById('a-peca-outro').style.display = this.value === "Outro" ? "block" : "none";
+    });
     wireTypeChips('a-tipo-group', 'a-tipo-outro', function(){});
     document.getElementById('btnAdminSaveEdit').addEventListener('click', admSaveEdit);
     document.getElementById('btnAdminCancelEdit').addEventListener('click', admCancelEdit);
     document.getElementById('btnChangePass').addEventListener('click', admChangePassword);
 
     clientDatalist();
+    funcionarioDatalist();
     switchTab('insert');
 
     window.addEventListener('storage', function(ev){
