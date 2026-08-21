@@ -1,0 +1,19 @@
+{
+  "name": "Neiva Acabamentos — Caderno de Remessas",
+  "short_name": "Neiva",
+  "description": "Controle de remessas de aplicação de botões — Neiva Acabamentos",
+  "id": "/index.html",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F4F6FA",
+  "theme_color": "#1A2F5A",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
