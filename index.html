@@ -91,19 +91,6 @@
     margin: 0;
     line-height: 1.2;
   }
-  .ios-banner{
-    background: var(--bg-alt);
-    color: var(--navy-dark);
-    border-bottom: 1px solid var(--line);
-    padding: 10px 16px;
-    font-size: 12.8px;
-    line-height: 1.4;
-    display:flex; align-items:center; gap:10px; justify-content:space-between;
-  }
-  .ios-banner button{
-    background: transparent; border: none; color: var(--ink-soft);
-    font-size: 15px; min-height: auto; padding: 4px 8px; flex-shrink: 0;
-  }
   .refresh-btn{
     background: rgba(255,255,255,0.14);
     color: #fff;
@@ -322,11 +309,6 @@
   <button class="install-btn" id="btnInstall" hidden>Instalar app</button>
 </header>
 
-<div class="ios-banner" id="iosBanner" hidden>
-  <span>Para instalar: toque em <strong>Compartilhar</strong> e depois em <strong>"Adicionar à Tela de Início"</strong>.</span>
-  <button id="btnDismissIosBanner" aria-label="Fechar aviso">✕</button>
-</div>
-
 <div class="wrap">
 
   <div id="loadingStatus" class="status">Carregando…</div>
@@ -350,7 +332,7 @@
 
         <div class="field">
           <label>Data</label>
-          <input type="date" id="i-data" />
+          <input type="text" id="i-data" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" />
         </div>
 
         <div class="row2">
@@ -410,11 +392,11 @@
         </div>
         <div class="field">
           <label>De</label>
-          <input type="date" id="h-ini" />
+          <input type="text" id="h-ini" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" />
         </div>
         <div class="field">
           <label>Até</label>
-          <input type="date" id="h-fim" />
+          <input type="text" id="h-fim" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" />
         </div>
         <div class="field">
           <label>Buscar (cor, observação...)</label>
@@ -424,11 +406,8 @@
       </section>
 
       <div class="summary-bar">
-        <div>
-          <div class="label">Total no filtro</div>
-          <div class="count" id="hSummaryCount">0 remessas</div>
-        </div>
-        <div class="value" id="hSummaryValue">R$ 0,00</div>
+        <div class="label">Resultado do filtro</div>
+        <div class="value" id="hSummaryCount">0 remessas</div>
       </div>
 
       <button class="btn-secondary" id="btnCopyHistory" style="margin-bottom:14px;">Copiar resumo</button>
@@ -483,7 +462,7 @@
           <h2><span class="dot"></span> Editar remessa</h2>
           <div class="field"><label>Funcionário</label><input type="text" id="a-funcionario" list="funcionariosList" /></div>
           <div class="field"><label>Cliente</label><input type="text" id="a-cliente" list="clientesList" /></div>
-          <div class="field"><label>Data</label><input type="date" id="a-data" /></div>
+          <div class="field"><label>Data</label><input type="text" id="a-data" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" /></div>
           <div class="row2">
             <div class="field"><label>Peça</label><select id="a-peca"></select></div>
             <div class="field"><label>Cor</label><input type="text" id="a-cor" /></div>
@@ -568,6 +547,17 @@
   function escapeHtml(str){ return String(str==null?"":str).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function parseBRNumber(s){ if(s==null) return 0; s=String(s).trim(); if(!s) return 0; s = s.replace(/\./g,'').replace(',', '.'); var n = parseFloat(s); return isNaN(n) ? 0 : n; }
   function displayDateToISO(s){ if(!s) return ""; var p = String(s).trim().split("/"); if(p.length!==3) return s; return p[2]+"-"+p[1].padStart(2,'0')+"-"+p[0].padStart(2,'0'); }
+  function isValidDisplayDate(s){ return /^\d{2}\/\d{2}\/\d{4}$/.test(String(s||"").trim()); }
+  function wireDateMask(id){
+    var el = document.getElementById(id);
+    el.addEventListener('input', function(){
+      var digits = el.value.replace(/\D/g,'').slice(0,8);
+      var out = digits;
+      if(digits.length > 4) out = digits.slice(0,2) + '/' + digits.slice(2,4) + '/' + digits.slice(4);
+      else if(digits.length > 2) out = digits.slice(0,2) + '/' + digits.slice(2);
+      el.value = out;
+    });
+  }
   function showToast(msg){
     var t = document.getElementById('toast');
     t.textContent = msg;
@@ -638,7 +628,7 @@
   function resetInsertForm(){
     document.getElementById('i-funcionario').value = "";
     document.getElementById('i-cliente').value = "";
-    document.getElementById('i-data').value = todayISO();
+    document.getElementById('i-data').value = fmtDateDisplay(todayISO());
     document.getElementById('i-peca').value = "";
     document.getElementById('i-cor').value = "";
     document.getElementById('i-peca-outro').value = "";
@@ -653,7 +643,7 @@
   function saveInsertEntry(){
     var funcionario = document.getElementById('i-funcionario').value.trim();
     var cliente = document.getElementById('i-cliente').value.trim();
-    var data = document.getElementById('i-data').value;
+    var dataRaw = document.getElementById('i-data').value.trim();
     var peca = document.getElementById('i-peca').value;
     var cor = document.getElementById('i-cor').value.trim();
     var pecaOutro = document.getElementById('i-peca-outro').value.trim();
@@ -663,7 +653,8 @@
 
     if(!funcionario){ showToast("Informe quem está preenchendo"); return; }
     if(!cliente){ showToast("Informe o cliente"); return; }
-    if(!data){ showToast("Escolha a data"); return; }
+    if(!isValidDisplayDate(dataRaw)){ showToast("Informe a data no formato dd/mm/aaaa"); return; }
+    var data = displayDateToISO(dataRaw);
     if(!peca){ showToast("Selecione a peça"); return; }
     if(peca === "Outro" && !pecaOutro){ showToast("Descreva a peça"); return; }
     if(qtd <= 0){ showToast("Informe a quantidade"); return; }
@@ -695,8 +686,8 @@
     var cliente = document.getElementById('h-cliente').value.trim().toLowerCase();
     var peca = document.getElementById('h-peca').value;
     var tipo = document.getElementById('h-tipo').value;
-    var ini = document.getElementById('h-ini').value;
-    var fim = document.getElementById('h-fim').value;
+    var ini = displayDateToISO(document.getElementById('h-ini').value.trim());
+    var fim = displayDateToISO(document.getElementById('h-fim').value.trim());
     var texto = document.getElementById('h-texto').value.trim().toLowerCase();
 
     return sortedEntries().filter(function(e){
@@ -721,7 +712,6 @@
     el.innerHTML = list.map(function(e){
       var tipoLabel = e.tipo === "Outro" ? (e.tipoOutro || "Outro") : e.tipo;
       var pecaLabel = e.peca === "Outro" ? (e.pecaOutro || "Outro") : e.peca;
-      var unit = e.qtd > 0 ? (e.valor / e.qtd) : null;
       return (
         '<div class="entry">' +
           '<div class="info">' +
@@ -730,18 +720,12 @@
             '<p class="meta">' + escapeHtml(tipoLabel || '—') + ' · ' + fmtDateDisplay(e.data) + (e.obs ? ' · ' + escapeHtml(e.obs) : '') + '</p>' +
             '<p class="meta">Preenchido por ' + escapeHtml(e.funcionario || '—') + '</p>' +
           '</div>' +
-          '<div class="right">' +
-            '<div class="value">' + fmtMoney(e.valor) + '</div>' +
-            (unit ? '<div class="unit">' + unit.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '/pç</div>' : '') +
-          '</div>' +
         '</div>'
       );
     }).join('');
   }
   function renderHistory(){
     var filtered = getHistoryFiltered();
-    var total = filtered.reduce(function(s,e){ return s + (Number(e.valor)||0); }, 0);
-    document.getElementById('hSummaryValue').textContent = fmtMoney(total);
     document.getElementById('hSummaryCount').textContent = filtered.length + (filtered.length === 1 ? " remessa encontrada" : " remessas encontradas");
     renderHistoryList(filtered);
     window.__historyFiltered = filtered;
@@ -761,10 +745,9 @@
     var lines = sorted.map(function(e){
       var tipoLabel = e.tipo === "Outro" ? (e.tipoOutro || "Outro") : e.tipo;
       var pecaLabel = e.peca === "Outro" ? (e.pecaOutro || "Outro") : e.peca;
-      return (e.qtd||'') + ' ' + pecaLabel + (e.cor ? ' ' + e.cor : '') + ' — ' + (e.cliente||'') + ' — ' + tipoLabel + ' — ' + fmtDateDisplay(e.data) + ' — ' + fmtMoney(e.valor);
+      return (e.qtd||'') + ' ' + pecaLabel + (e.cor ? ' ' + e.cor : '') + ' — ' + (e.cliente||'') + ' — ' + tipoLabel + ' — ' + fmtDateDisplay(e.data);
     });
-    var total = f.reduce(function(s,e){ return s + (Number(e.valor)||0); }, 0);
-    var text = "Resumo — " + lines.length + " remessa(s)\n\n" + lines.join("\n") + "\n\nTOTAL: " + fmtMoney(total);
+    var text = "Resumo — " + lines.length + " remessa(s)\n\n" + lines.join("\n");
     try{ await navigator.clipboard.writeText(text); showToast("Resumo copiado!"); }
     catch(e){ showToast("Não foi possível copiar"); }
   }
@@ -833,7 +816,7 @@
     editingId = id;
     document.getElementById('a-funcionario').value = e.funcionario || "";
     document.getElementById('a-cliente').value = e.cliente || "";
-    document.getElementById('a-data').value = e.data || "";
+    document.getElementById('a-data').value = e.data ? fmtDateDisplay(e.data) : "";
     document.getElementById('a-peca').value = e.peca || "";
     document.getElementById('a-cor').value = e.cor || "";
     document.getElementById('a-peca-outro').value = e.pecaOutro || "";
@@ -864,7 +847,7 @@
     entries[idx] = Object.assign({}, entries[idx], {
       funcionario: document.getElementById('a-funcionario').value.trim(),
       cliente: document.getElementById('a-cliente').value.trim(),
-      data: document.getElementById('a-data').value,
+      data: displayDateToISO(document.getElementById('a-data').value.trim()) || entries[idx].data,
       peca: peca,
       pecaOutro: peca === "Outro" ? document.getElementById('a-peca-outro').value.trim() : "",
       cor: document.getElementById('a-cor').value.trim(),
@@ -1015,11 +998,14 @@
       document.getElementById('i-peca-outro').style.display = this.value === "Outro" ? "block" : "none";
     });
     wireTypeChips('i-tipo-group', 'i-tipo-outro', function(t){ insertTipo = t; });
+    wireDateMask('i-data');
     document.getElementById('btnInsertSave').addEventListener('click', saveInsertEntry);
     resetInsertForm();
 
     document.getElementById('h-peca').innerHTML = pecaOptionsHTML(true);
     document.getElementById('h-tipo').innerHTML = tipoOptionsHTML();
+    wireDateMask('h-ini');
+    wireDateMask('h-fim');
     ['h-cliente','h-peca','h-tipo','h-ini','h-fim','h-texto'].forEach(function(id){
       document.getElementById(id).addEventListener('input', renderHistory);
       document.getElementById(id).addEventListener('change', renderHistory);
@@ -1038,6 +1024,7 @@
       document.getElementById('a-peca-outro').style.display = this.value === "Outro" ? "block" : "none";
     });
     wireTypeChips('a-tipo-group', 'a-tipo-outro', function(){});
+    wireDateMask('a-data');
     document.getElementById('btnAdminSaveEdit').addEventListener('click', admSaveEdit);
     document.getElementById('btnAdminCancelEdit').addEventListener('click', admCancelEdit);
     document.getElementById('btnChangePass').addEventListener('click', admChangePassword);
@@ -1068,24 +1055,6 @@
         }
       }catch(e){}
       location.reload(true);
-    });
-
-    var IOS_BANNER_KEY = "neiva_ios_banner_dismissed";
-    function isIOSDevice(){
-      var ua = navigator.userAgent;
-      var iOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-      var iPadOS13 = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-      return iOS || iPadOS13;
-    }
-    function isStandalone(){
-      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    }
-    if(isIOSDevice() && !isStandalone() && !localStorage.getItem(IOS_BANNER_KEY)){
-      document.getElementById('iosBanner').hidden = false;
-    }
-    document.getElementById('btnDismissIosBanner').addEventListener('click', function(){
-      document.getElementById('iosBanner').hidden = true;
-      localStorage.setItem(IOS_BANNER_KEY, '1');
     });
 
     window.addEventListener('beforeinstallprompt', function(e){
